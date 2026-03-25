@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minesweeper</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a1a2e; }
+  #grid { display: grid; gap: 2px; }
+  .cell {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-family: monospace;
+    cursor: pointer; user-select: none;
+    background: #4a4a6a; color: #fff; border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .cell:hover { background: #5a5a8a; }
+  .cell.revealed { cursor: default; background: #2a2a4a; }
+  .cell.revealed:hover { background: #2a2a4a; }
+  .cell.mine { background: #e74c3c; }
+  .cell[data-count="1"] { color: #3498db; }
+  .cell[data-count="2"] { color: #2ecc71; }
+  .cell[data-count="3"] { color: #e74c3c; }
+  .cell[data-count="4"] { color: #9b59b6; }
+  .cell[data-count="5"] { color: #e67e22; }
+  .cell[data-count="6"] { color: #1abc9c; }
+  .cell[data-count="7"] { color: #ecf0f1; }
+  .cell[data-count="8"] { color: #95a5a6; }
+  @keyframes fall {
+    to { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+  }
+  @keyframes splat {
+    0% { transform: translate(0, 0) scale(0.5); opacity: 0.9; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-6px, 4px); }
+    40% { transform: translate(5px, -3px); }
+    60% { transform: translate(-4px, 5px); }
+    80% { transform: translate(3px, -2px); }
+  }
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ROWS = parseInt(params.get("rows")) || 24;
+const COLS = parseInt(params.get("cols")) || 24;
+const MINES = Math.min(parseInt(params.get("mines")) || 80, ROWS * COLS - 1);
+const INITIAL_SEED = params.has("seed") ? parseInt(params.get("seed")) : null;
+function computeCellSize() {
+  if (params.has("cellSize")) return parseInt(params.get("cellSize"));
+  const gap = 2;
+  const pad = 20;
+  const maxW = (window.innerWidth - pad) / COLS - gap;
+  const maxH = (window.innerHeight - pad) / ROWS - gap;
+  return Math.max(16, Math.floor(Math.min(maxW, maxH, 60)));
+}
+const CELL_SIZE = computeCellSize();
+const FONT_SIZE = Math.max(10, Math.floor(CELL_SIZE * 0.45));
+document.head.insertAdjacentHTML("beforeend", `<style>
+  .cell { width: ${CELL_SIZE}px; height: ${CELL_SIZE}px; font-size: ${FONT_SIZE}px; }
+</style>`);
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+let board = [];
+let revealed = [];
+let gameOver = false;
+let revealedCount = 0;
+const totalSafe = ROWS * COLS - MINES;
+
+function initBoard(seed) {
+  const rng = seed != null ? seededRandom(seed) : Math.random;
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  revealed = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+  gameOver = false;
+  revealedCount = 0;
+
+  const positions = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      positions.push([r, c]);
+
+  const minePositions = shuffle([...positions], rng).slice(0, MINES);
+  for (const [r, c] of minePositions) board[r][c] = -1;
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c] === -1) continue;
+      let count = 0;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc] === -1)
+            count++;
+        }
+      board[r][c] = count;
+    }
+  }
+}
+
+function reveal(r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS || revealed[r][c] || gameOver) return;
+  revealed[r][c] = true;
+  revealedCount++;
+  const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+  cell.classList.add("revealed");
+
+  if (board[r][c] === -1) {
+    cell.classList.add("mine");
+    cell.textContent = "💣";
+    gameOver = true;
+    bloodSplatter(cell);
+    updateGameState();
+    return;
+  }
+
+  if (board[r][c] > 0) {
+    cell.textContent = board[r][c];
+    cell.dataset.count = board[r][c];
+  } else {
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++)
+        if (dr !== 0 || dc !== 0) reveal(r + dr, c + dc);
+  }
+
+  if (revealedCount === totalSafe) {
+    gameOver = true;
+    confetti();
+  }
+  updateGameState();
+}
+
+function bloodSplatter(origin) {
+  const rect = origin.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const colors = ["#8b0000", "#a00000", "#c0392b", "#e74c3c", "#6b0000"];
+  for (let i = 0; i < 40; i++) {
+    const el = document.createElement("div");
+    const size = 4 + Math.random() * 12;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 120;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    el.style.cssText = `
+      position: fixed; left: ${cx}px; top: ${cy}px;
+      width: ${size}px; height: ${size}px; border-radius: 50%;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      animation: splat ${0.3 + Math.random() * 0.4}s ease-out forwards;
+      --dx: ${dx}px; --dy: ${dy}px;
+      pointer-events: none; z-index: 9999; opacity: 0.9;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener("animationend", () => el.remove());
+  }
+  document.body.style.animation = "shake 0.4s ease-out";
+  document.body.addEventListener("animationend", () => { document.body.style.animation = ""; }, { once: true });
+}
+
+function confetti() {
+  const colors = ["#2ecc71", "#3498db", "#e74c3c", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c"];
+  const count = 150;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.style.cssText = `
+      position: fixed; top: -10px; width: 8px; height: 8px; border-radius: 2px;
+      left: ${Math.random() * 100}vw;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      animation: fall ${1.5 + Math.random() * 2}s linear ${Math.random() * 0.5}s forwards;
+      pointer-events: none; z-index: 9999;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener("animationend", () => el.remove());
+  }
+}
+
+
+function updateGameState() {
+  let status = "playing";
+  if (gameOver) {
+    const hitMine = Array.from(document.querySelectorAll(".mine")).length > 0;
+    status = hitMine ? "lost" : "won";
+  }
+  window.gameState = {
+    status,
+    revealedCount,
+    totalSafe,
+    board: board.map(row => [...row]),
+    revealed: revealed.map(row => [...row]),
+  };
+}
+
+function renderGrid() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  grid.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_SIZE}px)`;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener("click", () => reveal(r, c));
+      grid.appendChild(cell);
+    }
+  }
+}
+
+window.resetGame = function(seed) {
+  initBoard(seed != null ? seed : INITIAL_SEED);
+  renderGrid();
+  updateGameState();
+};
+
+window.clickCell = function(row, col) {
+  reveal(row, col);
+};
+
+window.resetGame(INITIAL_SEED);
+</script>
+</body>
+</html>
