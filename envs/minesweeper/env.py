@@ -7,26 +7,31 @@ from gymnasium import spaces
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
+from envs.minesweeper.reward import RewardConfig, compute_reward
+
 
 class MinesweeperEnv(gymnasium.Env):
     metadata = {"render_modes": ["rgb_array"]}
 
-    def __init__(self, rows=5, cols=5, mines=3, render_mode="rgb_array"):
+    def __init__(self, rows=24, cols=24, mines=80, render_mode="rgb_array", reward_config=None):
         super().__init__()
         self.rows = rows
         self.cols = cols
         self.mines = mines
         self.render_mode = render_mode
+        self.reward_config = reward_config or RewardConfig()
 
         self.action_space = spaces.Discrete(rows * cols)
 
-        self._viewport_w = cols * 62 + 20
-        self._viewport_h = rows * 62 + 20
+        grid_max = max(rows, cols)
+        self._cell_size = 60 if grid_max <= 8 else 40 if grid_max <= 16 else 28
+        self._viewport_w = cols * (self._cell_size + 2) + 20
+        self._viewport_h = rows * (self._cell_size + 2) + 20
         self.observation_space = spaces.Box(0, 255, shape=(self._viewport_h, self._viewport_w, 3), dtype=np.uint8)
 
         self._browser = None
         self._page = None
-        self._prev_progress = 0.0
+        self._prev_revealed = 0
         self._html_path = Path(__file__).parent / "game.html"
 
     def _ensure_browser(self):
@@ -48,7 +53,10 @@ class MinesweeperEnv(gymnasium.Env):
         self._ensure_browser()
 
         game_seed = seed if seed is not None else self.np_random.integers(0, 2**31)
-        url = f"file://{self._html_path}?rows={self.rows}&cols={self.cols}&mines={self.mines}&seed={game_seed}"
+        url = (
+            f"file://{self._html_path}?rows={self.rows}&cols={self.cols}"
+            f"&mines={self.mines}&seed={game_seed}&cellSize={self._cell_size}"
+        )
 
         if self._page is None:
             self._page = self._browser.new_page()
@@ -57,7 +65,7 @@ class MinesweeperEnv(gymnasium.Env):
         self._page.goto(url)
         self._page.wait_for_function("() => window.gameState !== undefined")
         self._page.wait_for_load_state("networkidle")
-        self._prev_progress = 0.0
+        self._prev_revealed = 0
 
         obs = self._screenshot()
         info = self._get_game_state()
@@ -70,27 +78,16 @@ class MinesweeperEnv(gymnasium.Env):
         if state_before["status"] != "playing":
             return self._screenshot(), 0.0, True, False, state_before
 
-        already_revealed = state_before["revealed"][row][col]
-
         self._page.evaluate(f"() => window.clickCell({row}, {col})")
 
         state = self._get_game_state()
-        progress = state["revealedCount"] / state["totalSafe"]
+        cells_revealed = state["revealedCount"] - self._prev_revealed
+        terminated = state["status"] != "playing"
+        won = state["status"] == "won"
 
-        if state["status"] == "lost":
-            reward = -1.0
-            terminated = True
-        elif state["status"] == "won":
-            reward = progress - self._prev_progress
-            terminated = True
-        elif already_revealed:
-            reward = 0.0
-            terminated = False
-        else:
-            reward = progress - self._prev_progress
-            terminated = False
+        reward = compute_reward(self.reward_config, state["status"], cells_revealed, won)
 
-        self._prev_progress = progress
+        self._prev_revealed = state["revealedCount"]
         obs = self._screenshot()
         return obs, reward, terminated, False, state
 
