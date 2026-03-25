@@ -6,7 +6,7 @@ Python experiments with Claude computer use.
 
 | Layer | Technology |
 |-------|------------|
-| Runtime | Python 3.12 |
+| Runtime | Python 3.14 (free-threaded / no-GIL) |
 | AI | TBD (computer use) |
 
 ## Code Standards
@@ -20,3 +20,14 @@ Python experiments with Claude computer use.
 - **Meaningful names**: Variables and functions should self-document
 - **No re-exports from `__init__.py`**: Keep `__init__.py` files empty. Import directly from the module.
 - **No `__all__`**: Do not define `__all__` in any module.
+- **Imports at top**: All imports at the top of the file. No lazy/deferred imports hiding dependency issues.
+- **Lint**: `ruff check .` must pass with zero violations. Line length 120.
+
+## Pre-Commit Checklist
+
+Before committing, complete these steps in order:
+
+1. **Review the diff.** Ask: would a staff software engineer approve this? Iterate until the answer is yes.
+2. **Run unit tests and lint.** `pytest tests/ -v && ruff check .` — all must pass, zero violations.
+3. **Run the testing protocol** described in `docs/workflows/testing.md` (e2e testing from a clean slate).
+4. **Open the HTML for the user.** Show them what you've built.

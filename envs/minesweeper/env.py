@@ -1,8 +1,11 @@
+import io
 from pathlib import Path
 
 import gymnasium
 import numpy as np
 from gymnasium import spaces
+from PIL import Image
+from playwright.sync_api import sync_playwright
 
 
 class MinesweeperEnv(gymnasium.Env):
@@ -19,9 +22,7 @@ class MinesweeperEnv(gymnasium.Env):
 
         self._viewport_w = cols * 62 + 20
         self._viewport_h = rows * 62 + 20
-        self.observation_space = spaces.Box(
-            0, 255, shape=(self._viewport_h, self._viewport_w, 3), dtype=np.uint8
-        )
+        self.observation_space = spaces.Box(0, 255, shape=(self._viewport_h, self._viewport_w, 3), dtype=np.uint8)
 
         self._browser = None
         self._page = None
@@ -31,18 +32,13 @@ class MinesweeperEnv(gymnasium.Env):
     def _ensure_browser(self):
         if self._browser is not None:
             return
-        from playwright.sync_api import sync_playwright
         self._playwright = sync_playwright().start()
         self._browser = self._playwright.chromium.launch(headless=True)
 
     def _screenshot(self):
         png = self._page.screenshot()
-        from PIL import Image
-        import io
         img = Image.open(io.BytesIO(png)).convert("RGB")
-        arr = np.array(img)
-        # Quantize to eliminate subpixel rendering noise
-        return arr
+        return np.array(img)
 
     def _get_game_state(self):
         return self._page.evaluate("() => window.gameState")
@@ -52,10 +48,7 @@ class MinesweeperEnv(gymnasium.Env):
         self._ensure_browser()
 
         game_seed = seed if seed is not None else self.np_random.integers(0, 2**31)
-        url = (
-            f"file://{self._html_path}"
-            f"?rows={self.rows}&cols={self.cols}&mines={self.mines}&seed={game_seed}"
-        )
+        url = f"file://{self._html_path}?rows={self.rows}&cols={self.cols}&mines={self.mines}&seed={game_seed}"
 
         if self._page is None:
             self._page = self._browser.new_page()
