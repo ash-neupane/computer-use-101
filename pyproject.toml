@@ -8,20 +8,25 @@ dependencies = [
     "playwright>=1.58.0",
     "Pillow>=11.3.0",
     "numpy>=2.0.2",
+    "torch>=2.6.0",
+    "wandb>=0.25.0",
+    "python-dotenv>=1.0.0",
+    "click>=8.1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.2",
     "ruff>=0.15.7",
-]
-rl = [
-    "torch>=2.6.0",
+    "matplotlib>=3.9.0",
 ]
 
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["computer_use_101*"]
 
 [tool.ruff]
 line-length = 120

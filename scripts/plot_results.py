@@ -1,9 +1,10 @@
 """Plot DQN training curve with random baseline comparison."""
 
-import argparse
 import json
 from pathlib import Path
 
+import click
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -14,13 +15,6 @@ def smooth(values, window=50):
 
 
 def plot(metrics_path, output_path=None):
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("matplotlib not installed. Install with: pip install matplotlib")
-        print("Falling back to text summary.\n")
-        return text_summary(metrics_path)
-
     with open(metrics_path) as f:
         data = json.load(f)
 
@@ -50,29 +44,12 @@ def plot(metrics_path, output_path=None):
     plt.close()
 
 
-def text_summary(metrics_path):
-    with open(metrics_path) as f:
-        data = json.load(f)
-
-    rewards = data["episode_rewards"]
-    n = len(rewards)
-    early = rewards[: min(50, n)]
-    late = rewards[max(0, n - 50) :]
-
-    print(f"Episodes: {n}")
-    print(f"Early avg reward (first 50):  {np.mean(early):.1f}")
-    print(f"Late avg reward (last 50):    {np.mean(late):.1f}")
-    print(f"Improvement:                  {np.mean(late) - np.mean(early):+.1f}")
-    print(f"Best episode:                 {max(rewards):.1f}")
-    print(f"Late win rate:                {sum(1 for r in late if r > 0) / len(late):.1%}")
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Plot DQN training results")
-    parser.add_argument("metrics", type=str, default="runs/dqn/metrics.json", nargs="?")
-    parser.add_argument("--output", type=str, default=None)
-    args = parser.parse_args()
-    plot(args.metrics, args.output)
+@click.command()
+@click.argument("metrics", default="runs/dqn/metrics.json", type=click.Path(exists=True))
+@click.option("--output", default=None, type=click.Path(), help="Output path for the plot image")
+def main(metrics, output):
+    """Plot DQN training results."""
+    plot(metrics, output)
 
 
 if __name__ == "__main__":

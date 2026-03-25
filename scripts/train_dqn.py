@@ -1,6 +1,5 @@
 """Pixel-based DQN for Minesweeper. Validates that RL can learn from raw screenshots."""
 
-import argparse
 import json
 import random
 from collections import deque
@@ -11,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from computer_use_101.logging import RunLogger
 from computer_use_101.minesweeper.env import MinesweeperEnv
 from computer_use_101.minesweeper.reward import RewardConfig
 
@@ -65,15 +65,16 @@ def obs_to_tensor(obs):
     return torch.from_numpy(obs).permute(2, 0, 1).float() / 255.0
 
 
-def train(args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def train(args, logger: RunLogger):
+    device = args.device
+    reward_cfg = args.reward
 
     reward_config = RewardConfig(
-        bomb=-10.0,
-        reveal_one=1.0,
-        reveal_flood=5.0,
-        win=50.0,
-        already_revealed=-1.0,
+        bomb=reward_cfg["bomb"],
+        reveal_one=reward_cfg["reveal_one"],
+        reveal_flood=reward_cfg["reveal_flood"],
+        win=reward_cfg["win"],
+        already_revealed=reward_cfg["already_revealed"],
     )
     env = MinesweeperEnv(rows=args.rows, cols=args.cols, mines=args.mines, reward_config=reward_config)
     n_actions = env.action_space.n
@@ -138,6 +139,7 @@ def train(args):
         epsilon = max(args.eps_end, epsilon - eps_decay)
         episode_rewards.append(total_reward)
         episode_lengths.append(steps)
+        logger.log_episode(ep, total_reward, steps, epsilon)
 
         if (ep + 1) % args.target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
@@ -147,6 +149,7 @@ def train(args):
             avg_r = np.mean(recent)
             avg_len = np.mean(episode_lengths[-args.log_every :])
             win_rate = sum(1 for r in recent if r > 0) / len(recent)
+            logger.log_summary(ep, avg_r, avg_len, win_rate, epsilon)
             print(
                 f"ep {ep + 1:>5} | avg_r {avg_r:>7.1f} | avg_len {avg_len:>5.1f} | "
                 f"win% {win_rate:>5.1%} | eps {epsilon:.3f}"
@@ -160,33 +163,9 @@ def train(args):
     metrics = {
         "episode_rewards": episode_rewards,
         "episode_lengths": episode_lengths,
-        "args": vars(args),
     }
     with open(log_path / "metrics.json", "w") as f:
         json.dump(metrics, f)
 
     torch.save(policy_net.state_dict(), log_path / "final_model.pt")
     print(f"\nDone. Metrics saved to {log_path / 'metrics.json'}")
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Train DQN on Minesweeper pixels")
-    parser.add_argument("--rows", type=int, default=5)
-    parser.add_argument("--cols", type=int, default=5)
-    parser.add_argument("--mines", type=int, default=3)
-    parser.add_argument("--episodes", type=int, default=2000)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--buffer-size", type=int, default=10000)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--eps-start", type=float, default=1.0)
-    parser.add_argument("--eps-end", type=float, default=0.05)
-    parser.add_argument("--eps-decay-steps", type=int, default=1000)
-    parser.add_argument("--target-update", type=int, default=10)
-    parser.add_argument("--log-every", type=int, default=50)
-    parser.add_argument("--log-dir", type=str, default="runs/dqn")
-    train(parser.parse_args())
-
-
-if __name__ == "__main__":
-    main()
