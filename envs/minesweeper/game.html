@@ -28,6 +28,9 @@
   .cell[data-count="6"] { color: #1abc9c; }
   .cell[data-count="7"] { color: #ecf0f1; }
   .cell[data-count="8"] { color: #95a5a6; }
+  @keyframes fall {
+    to { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+  }
 </style>
 </head>
 <body>
@@ -117,9 +120,28 @@ function reveal(r, c) {
 
   if (revealedCount === totalSafe) {
     gameOver = true;
+    confetti();
   }
   updateGameState();
 }
+
+function confetti() {
+  const colors = ["#2ecc71", "#3498db", "#e74c3c", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c"];
+  const count = 150;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.style.cssText = `
+      position: fixed; top: -10px; width: 8px; height: 8px; border-radius: 2px;
+      left: ${Math.random() * 100}vw;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      animation: fall ${1.5 + Math.random() * 2}s linear ${Math.random() * 0.5}s forwards;
+      pointer-events: none; z-index: 9999;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener("animationend", () => el.remove());
+  }
+}
+
 
 function updateGameState() {
   let status = "playing";
