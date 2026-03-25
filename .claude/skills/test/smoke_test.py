@@ -1,6 +1,6 @@
 import numpy as np
 
-from envs.minesweeper.env import MinesweeperEnv
+from computer_use_101.minesweeper.env import MinesweeperEnv
 
 EPISODES = 100
 

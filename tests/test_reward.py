@@ -1,4 +1,4 @@
-from envs.minesweeper.reward import RewardConfig, compute_reward
+from computer_use_101.minesweeper.reward import RewardConfig, compute_reward
 
 
 def test_bomb_reward():

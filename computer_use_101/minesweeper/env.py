@@ -7,7 +7,7 @@ from gymnasium import spaces
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-from envs.minesweeper.reward import RewardConfig, compute_reward
+from computer_use_101.minesweeper.reward import RewardConfig, compute_reward
 
 
 class MinesweeperEnv(gymnasium.Env):

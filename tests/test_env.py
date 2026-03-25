@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from gymnasium.utils.env_checker import check_env
 
-from envs.minesweeper.env import MinesweeperEnv
-from envs.minesweeper.reward import RewardConfig
+from computer_use_101.minesweeper.env import MinesweeperEnv
+from computer_use_101.minesweeper.reward import RewardConfig
 
 
 @pytest.fixture

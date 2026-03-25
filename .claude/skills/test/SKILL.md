@@ -1,6 +1,6 @@
 ---
 name: test
-description: Run the full testing protocol for the minesweeper RL environment. Use when changes are made to envs/ or tests/ and need verification before committing.
+description: Run the full testing protocol for the minesweeper RL environment. Use when changes are made to computer_use_101/ or tests/ and need verification before committing.
 argument-hint: "[env-name]"
 allowed-tools: Bash(pytest *, ruff *, python *, open *)
 ---
@@ -38,7 +38,7 @@ Sanity check: mean reward should be negative (random play hits mines), mean leng
 Open the game for the user to verify visually:
 
 ```bash
-open envs/minesweeper/game.html
+open computer_use_101/minesweeper/game.html
 ```
 
 Verify:

@@ -2,7 +2,7 @@ import pytest
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 
-GAME_HTML = Path(__file__).parent.parent / "envs" / "minesweeper" / "game.html"
+GAME_HTML = Path(__file__).parent.parent / "computer_use_101" / "minesweeper" / "game.html"
 
 
 @pytest.fixture(scope="module")

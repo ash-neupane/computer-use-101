@@ -6,7 +6,7 @@ Python experiments with Claude computer use.
 
 | Layer | Technology |
 |-------|------------|
-| Runtime | Python 3.14 (free-threaded / no-GIL) |
+| Runtime | Python 3.14 via `uv` (`.python-version`) |
 | AI | TBD (computer use) |
 
 ## Code Standards
@@ -32,8 +32,11 @@ Before committing, complete these steps in order:
 
 ## Gotchas
 
+- **Free-threaded Python (3.14t)**: Playwright/greenlet crash with bus error on the free-threaded build. Use standard `3.14` for now. Revisit when greenlet ships `3.14t` wheels.
+- **Setup**: `uv venv --python 3.14 .venv && source .venv/bin/activate && uv pip install -e ".[dev]" && playwright install chromium`
+
 ## Explore This Repo
 
 Use subagents to explore these file groups for key design decisions:
 
-- **Gameplay**: `envs/minesweeper/env.py`, `envs/minesweeper/game.html`, `envs/minesweeper/reward.py`
+- **Gameplay**: `computer_use_101/minesweeper/env.py`, `computer_use_101/minesweeper/game.html`, `computer_use_101/minesweeper/reward.py`
