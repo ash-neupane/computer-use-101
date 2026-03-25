@@ -28,6 +28,12 @@ Python experiments with Claude computer use.
 Before committing, complete these steps in order:
 
 1. **Review the diff.** Ask: would a staff software engineer approve this? Iterate until the answer is yes.
-2. **Run unit tests and lint.** `pytest tests/ -v && ruff check .` — all must pass, zero violations.
-3. **Run the testing protocol** described in `docs/workflows/testing.md` (e2e testing from a clean slate).
-4. **Open the HTML for the user.** Show them what you've built.
+2. **Run `/test`** — runs unit tests, lint, smoke test, and opens the game for manual verification.
+
+## Gotchas
+
+## Explore This Repo
+
+Use subagents to explore these file groups for key design decisions:
+
+- **Gameplay**: `envs/minesweeper/env.py`, `envs/minesweeper/game.html`, `envs/minesweeper/reward.py`
