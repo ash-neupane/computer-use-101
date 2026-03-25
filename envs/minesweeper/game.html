@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minesweeper</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #1a1a2e; }
+  #grid { display: grid; gap: 2px; }
+  .cell {
+    width: 60px; height: 60px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: bold; font-family: monospace;
+    cursor: pointer; user-select: none;
+    background: #4a4a6a; color: #fff; border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .cell:hover { background: #5a5a8a; }
+  .cell.revealed { cursor: default; background: #2a2a4a; }
+  .cell.revealed:hover { background: #2a2a4a; }
+  .cell.mine { background: #e74c3c; }
+  .cell[data-count="1"] { color: #3498db; }
+  .cell[data-count="2"] { color: #2ecc71; }
+  .cell[data-count="3"] { color: #e74c3c; }
+  .cell[data-count="4"] { color: #9b59b6; }
+  .cell[data-count="5"] { color: #e67e22; }
+  .cell[data-count="6"] { color: #1abc9c; }
+  .cell[data-count="7"] { color: #ecf0f1; }
+  .cell[data-count="8"] { color: #95a5a6; }
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<script>
+const params = new URLSearchParams(window.location.search);
+const ROWS = parseInt(params.get("rows")) || 5;
+const COLS = parseInt(params.get("cols")) || 5;
+const MINES = Math.min(parseInt(params.get("mines")) || 3, ROWS * COLS - 1);
+const INITIAL_SEED = params.has("seed") ? parseInt(params.get("seed")) : null;
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+let board = [];
+let revealed = [];
+let gameOver = false;
+let revealedCount = 0;
+const totalSafe = ROWS * COLS - MINES;
+
+function initBoard(seed) {
+  const rng = seed != null ? seededRandom(seed) : Math.random;
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  revealed = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+  gameOver = false;
+  revealedCount = 0;
+
+  const positions = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      positions.push([r, c]);
+
+  const minePositions = shuffle([...positions], rng).slice(0, MINES);
+  for (const [r, c] of minePositions) board[r][c] = -1;
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c] === -1) continue;
+      let count = 0;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc] === -1)
+            count++;
+        }
+      board[r][c] = count;
+    }
+  }
+}
+
+function reveal(r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS || revealed[r][c] || gameOver) return;
+  revealed[r][c] = true;
+  revealedCount++;
+  const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+  cell.classList.add("revealed");
+
+  if (board[r][c] === -1) {
+    cell.classList.add("mine");
+    cell.textContent = "💣";
+    gameOver = true;
+    updateGameState();
+    return;
+  }
+
+  if (board[r][c] > 0) {
+    cell.textContent = board[r][c];
+    cell.dataset.count = board[r][c];
+  } else {
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++)
+        if (dr !== 0 || dc !== 0) reveal(r + dr, c + dc);
+  }
+
+  if (revealedCount === totalSafe) {
+    gameOver = true;
+  }
+  updateGameState();
+}
+
+function updateGameState() {
+  let status = "playing";
+  if (gameOver) {
+    const hitMine = Array.from(document.querySelectorAll(".mine")).length > 0;
+    status = hitMine ? "lost" : "won";
+  }
+  window.gameState = {
+    status,
+    revealedCount,
+    totalSafe,
+    board: board.map(row => [...row]),
+    revealed: revealed.map(row => [...row]),
+  };
+}
+
+function renderGrid() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  grid.style.gridTemplateColumns = `repeat(${COLS}, 60px)`;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener("click", () => reveal(r, c));
+      grid.appendChild(cell);
+    }
+  }
+}
+
+window.resetGame = function(seed) {
+  initBoard(seed != null ? seed : INITIAL_SEED);
+  renderGrid();
+  updateGameState();
+};
+
+window.clickCell = function(row, col) {
+  reveal(row, col);
+};
+
+window.resetGame(INITIAL_SEED);
+</script>
+</body>
+</html>

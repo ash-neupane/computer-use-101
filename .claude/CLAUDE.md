@@ -18,3 +18,5 @@ Python experiments with Claude computer use.
 - **Single responsibility**: Functions/classes do one thing well
 - **Early returns**: Exit early for edge cases and errors
 - **Meaningful names**: Variables and functions should self-document
+- **No re-exports from `__init__.py`**: Keep `__init__.py` files empty. Import directly from the module.
+- **No `__all__`**: Do not define `__all__` in any module.
