@@ -1,3 +1,4 @@
+import base64
 import io
 from pathlib import Path
 
@@ -25,9 +26,14 @@ class MinesweeperEnv(gymnasium.Env):
 
         grid_max = max(rows, cols)
         self._cell_size = 60 if grid_max <= 8 else 40 if grid_max <= 16 else 28
+        gap = 2
+        pad = 10
+        self._raw_w = cols * (self._cell_size + gap) + pad * 2 - gap
+        self._raw_h = rows * (self._cell_size + gap) + pad * 2 - gap
         self._viewport_w = cols * (self._cell_size + 2) + 20
         self._viewport_h = rows * (self._cell_size + 2) + 20
-        self.observation_space = spaces.Box(0, 255, shape=(self._viewport_h, self._viewport_w, 3), dtype=np.uint8)
+        self._obs_size = 84
+        self.observation_space = spaces.Box(0, 255, shape=(self._obs_size, self._obs_size, 3), dtype=np.uint8)
 
         self._browser = None
         self._page = None
@@ -41,8 +47,9 @@ class MinesweeperEnv(gymnasium.Env):
         self._browser = self._playwright.chromium.launch(headless=True)
 
     def _screenshot(self):
-        png = self._page.screenshot()
-        img = Image.open(io.BytesIO(png)).convert("RGB")
+        b64 = self._page.evaluate("() => window.getPixelsPNG()")
+        img = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGB")
+        img = img.resize((self._obs_size, self._obs_size), Image.BILINEAR)
         return np.array(img)
 
     def _get_game_state(self):
@@ -53,20 +60,21 @@ class MinesweeperEnv(gymnasium.Env):
         self._ensure_browser()
 
         game_seed = seed if seed is not None else self.np_random.integers(0, 2**31)
-        url = (
-            f"file://{self._html_path}?rows={self.rows}&cols={self.cols}"
-            f"&mines={self.mines}&seed={game_seed}&cellSize={self._cell_size}"
-        )
 
         if self._page is None:
             self._page = self._browser.new_page()
             self._page.set_viewport_size({"width": self._viewport_w, "height": self._viewport_h})
+            url = (
+                f"file://{self._html_path}?rows={self.rows}&cols={self.cols}"
+                f"&mines={self.mines}&seed={game_seed}&cellSize={self._cell_size}"
+            )
+            self._page.goto(url)
+            self._page.wait_for_function("() => window.gameState !== undefined")
+            self._page.wait_for_load_state("networkidle")
+        else:
+            self._page.evaluate(f"() => window.resetGame({game_seed})")
 
-        self._page.goto(url)
-        self._page.wait_for_function("() => window.gameState !== undefined")
-        self._page.wait_for_load_state("networkidle")
         self._prev_revealed = 0
-
         obs = self._screenshot()
         info = self._get_game_state()
         return obs, info

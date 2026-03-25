@@ -235,6 +235,50 @@ window.clickCell = function(row, col) {
   reveal(row, col);
 };
 
+const COLORS = {
+  bg: [26, 26, 46],
+  hidden: [74, 74, 106],
+  revealed: [42, 42, 74],
+  mine: [231, 76, 60],
+  counts: {
+    1: [52, 152, 219], 2: [46, 204, 113], 3: [231, 76, 60], 4: [155, 89, 182],
+    5: [230, 126, 34], 6: [26, 188, 156], 7: [236, 240, 241], 8: [149, 165, 166],
+  },
+};
+
+const _canvas = document.createElement("canvas");
+const _ctx = _canvas.getContext("2d");
+const _gap = 2;
+const _pad = 10;
+const _cw = COLS * (CELL_SIZE + _gap) + _pad * 2 - _gap;
+const _ch = ROWS * (CELL_SIZE + _gap) + _pad * 2 - _gap;
+_canvas.width = _cw;
+_canvas.height = _ch;
+
+window.getPixelsPNG = function() {
+  _ctx.fillStyle = `rgb(${COLORS.bg.join(",")})`;
+  _ctx.fillRect(0, 0, _cw, _ch);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x0 = _pad + c * (CELL_SIZE + _gap);
+      const y0 = _pad + r * (CELL_SIZE + _gap);
+      let color;
+      if (!revealed[r][c]) {
+        color = COLORS.hidden;
+      } else if (board[r][c] === -1) {
+        color = COLORS.mine;
+      } else if (board[r][c] > 0) {
+        color = COLORS.counts[board[r][c]] || COLORS.revealed;
+      } else {
+        color = COLORS.revealed;
+      }
+      _ctx.fillStyle = `rgb(${color.join(",")})`;
+      _ctx.fillRect(x0, y0, CELL_SIZE, CELL_SIZE);
+    }
+  }
+  return _canvas.toDataURL("image/png").split(",")[1];
+};
+
 window.resetGame(INITIAL_SEED);
 </script>
 </body>
