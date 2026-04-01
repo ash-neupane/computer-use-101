@@ -1,0 +1,33 @@
+{
+    "device": "cpu",
+    "logging": {
+        "level": "info",
+        "log_every": 50
+    },
+    "wandb": {
+        "entity": "ash-neupane-",
+        "project": "computer-use-101"
+    },
+    "experiment": {
+        "rows": 5,
+        "cols": 5,
+        "mines": 3,
+        "episodes": 2000,
+        "batch_size": 64,
+        "buffer_size": 10000,
+        "lr": 1e-3,
+        "gamma": 0.99,
+        "eps_start": 1.0,
+        "eps_end": 0.05,
+        "eps_decay_steps": 1000,
+        "target_update": 10,
+        "log_dir": "runs/dqn"
+    },
+    "reward": {
+        "bomb": -10.0,
+        "reveal_one": 1.0,
+        "reveal_flood": 5.0,
+        "win": 50.0,
+        "already_revealed": -1.0
+    }
+}

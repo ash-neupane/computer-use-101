@@ -20,7 +20,10 @@ Python experiments with Claude computer use.
 - **Meaningful names**: Variables and functions should self-document
 - **No re-exports from `__init__.py`**: Keep `__init__.py` files empty. Import directly from the module.
 - **No `__all__`**: Do not define `__all__` in any module.
-- **Imports at top**: All imports at the top of the file. No lazy/deferred imports hiding dependency issues.
+- **Imports at top**: All imports at the top of the file. Never `try/except ImportError` around imports — env issues must not be masked. No lazy/deferred imports hiding dependency issues.
+- **Resource initialization**: External resources (DB clients, wandb, API clients) must be initialized in the entrypoint script and passed into all classes that need them. See `docs/patterns/resource-initialization.md`.
+- **Config from files**: Use `config/default.json` for defaults. CLI overrides via `click`. No hardcoded config in library code. See `docs/patterns/configs.md`.
+- **CLI with click**: Use `click` for all CLI scripts. Never `argparse`.
 - **Lint**: `ruff check .` must pass with zero violations. Line length 120.
 
 ## Pre-Commit Checklist
